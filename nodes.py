@@ -132,15 +132,21 @@ def _check_health(api_url: str, timeout: int = 3) -> bool:
 
 
 def _probe_max_seq_len_support(venv_python: str, fish_root: str) -> bool:
-    """检测 fish-speech api_server.py 是否支持 --max-seq-len 参数（S2+ 新增）。"""
+    """检测 fish-speech api_server.py 是否支持 --max-seq-len 参数（S2+ 新增）。
+
+    默认返回 True（新版行为）。仅在 --help 明确不含该参数时返回 False 并提示升级。
+    """
     try:
         result = subprocess.run(
             [venv_python, str(Path(fish_root) / "tools" / "api_server.py"), "--help"],
             capture_output=True, text=True, timeout=30, cwd=fish_root,
         )
-        return "--max-seq-len" in result.stdout
-    except Exception:
+        if "--max-seq-len" in result.stdout:
+            return True
+        _log("⚠ 当前 fish-speech 版本不支持 --max-seq-len，建议升级到 S2+ (main 分支): cd {} && git pull".format(fish_root))
         return False
+    except Exception:
+        return True  # 探测失败时默认按新版处理，不降级
 
 
 def _ensure_server(
@@ -189,6 +195,8 @@ def _ensure_server(
             ]
             if _probe_max_seq_len_support(venv_python, fish_root):
                 cmd.extend(["--max-seq-len", str(max(1024, int(max_seq_len)))])
+            else:
+                _log("跳过 --max-seq-len（旧版不支持）。注意：旧版上下文窗口固定，长文本可能截断。")
             if use_half:
                 cmd.append("--half")
             env = os.environ.copy()
