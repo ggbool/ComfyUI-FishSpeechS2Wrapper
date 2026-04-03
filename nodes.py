@@ -50,7 +50,7 @@ def _default_venv_python(fish_root: str) -> str:
 def _normalize_api_url(api_url: str) -> str:
     text = (api_url or "").strip()
     if not text:
-        return f"http://127.0.0.1:{_pick_free_port('127.0.0.1')}"
+        return cfg().api_url
     if not text.startswith("http://") and not text.startswith("https://"):
         return f"http://{text}"
     return text
@@ -131,6 +131,18 @@ def _check_health(api_url: str, timeout: int = 3) -> bool:
         return False
 
 
+def _probe_max_seq_len_support(venv_python: str, fish_root: str) -> bool:
+    """检测 fish-speech api_server.py 是否支持 --max-seq-len 参数（S2+ 新增）。"""
+    try:
+        result = subprocess.run(
+            [venv_python, str(Path(fish_root) / "tools" / "api_server.py"), "--help"],
+            capture_output=True, text=True, timeout=30, cwd=fish_root,
+        )
+        return "--max-seq-len" in result.stdout
+    except Exception:
+        return False
+
+
 def _ensure_server(
     fish_root: str,
     venv_python: str,
@@ -168,8 +180,6 @@ def _ensure_server(
                 str(Path(fish_root) / "tools" / "api_server.py"),
                 "--listen",
                 listen,
-                "--max-seq-len",
-                str(max(1024, int(max_seq_len))),
                 "--llama-checkpoint-path",
                 model_path,
                 "--decoder-checkpoint-path",
@@ -177,6 +187,8 @@ def _ensure_server(
                 "--max-text-length",
                 "0",
             ]
+            if _probe_max_seq_len_support(venv_python, fish_root):
+                cmd.extend(["--max-seq-len", str(max(1024, int(max_seq_len)))])
             if use_half:
                 cmd.append("--half")
             env = os.environ.copy()
@@ -412,7 +424,7 @@ class FishSpeechStudioReferenceRegister(IO.ComfyNode):
             inputs=[
                 IO.String.Input("fish_root", default=c.fish_root, tooltip="Fish-Speech 独立目录。"),
                 IO.String.Input("venv_python", default="", tooltip="隔离 Python，留空自动推断。"),
-                IO.String.Input("api_url", default="", tooltip="API 地址，留空自动分配。"),
+                IO.String.Input("api_url", default=c.api_url, tooltip="API 地址，留空使用配置默认值。"),
                 IO.Combo.Input("server_strategy", options=["reuse", "oneshot", "manual"], default="reuse", tooltip="服务策略。"),
                 IO.Int.Input("startup_timeout", default=c.startup_timeout, min=30, max=1800, step=10, tooltip="服务启动超时秒数。"),
                 IO.String.Input("model_path", default=c.model_path, tooltip="主模型目录。"),
@@ -496,7 +508,7 @@ class FishSpeechStudioBootstrapReferenceFromText(IO.ComfyNode):
             inputs=[
                 IO.String.Input("fish_root", default=c.fish_root, tooltip="Fish-Speech 独立目录。"),
                 IO.String.Input("venv_python", default="", tooltip="隔离 Python，留空自动推断。"),
-                IO.String.Input("api_url", default="", tooltip="API 地址，留空自动分配。"),
+                IO.String.Input("api_url", default=c.api_url, tooltip="API 地址，留空使用配置默认值。"),
                 IO.Combo.Input("server_strategy", options=["reuse", "oneshot", "manual"], default="reuse", tooltip="服务策略。"),
                 IO.Int.Input("startup_timeout", default=c.startup_timeout, min=30, max=1800, step=10, tooltip="服务启动超时秒数。"),
                 IO.String.Input("model_path", default=c.model_path, tooltip="主模型目录。"),
@@ -621,7 +633,7 @@ class FishSpeechStudioReferenceList(IO.ComfyNode):
             inputs=[
                 IO.String.Input("fish_root", default=c.fish_root, tooltip="Fish-Speech 独立目录。"),
                 IO.String.Input("venv_python", default="", tooltip="隔离 Python，留空自动推断。"),
-                IO.String.Input("api_url", default="", tooltip="API 地址，留空自动分配。"),
+                IO.String.Input("api_url", default=c.api_url, tooltip="API 地址，留空使用配置默认值。"),
                 IO.Combo.Input("server_strategy", options=["reuse", "oneshot", "manual"], default="reuse", tooltip="服务策略。"),
                 IO.Int.Input("startup_timeout", default=c.startup_timeout, min=30, max=1800, step=10, tooltip="服务启动超时秒数。"),
                 IO.String.Input("model_path", default=c.model_path, tooltip="主模型目录。"),
@@ -659,7 +671,7 @@ class FishSpeechStudioReferenceDelete(IO.ComfyNode):
             inputs=[
                 IO.String.Input("fish_root", default=c.fish_root, tooltip="Fish-Speech 独立目录。"),
                 IO.String.Input("venv_python", default="", tooltip="隔离 Python，留空自动推断。"),
-                IO.String.Input("api_url", default="", tooltip="API 地址，留空自动分配。"),
+                IO.String.Input("api_url", default=c.api_url, tooltip="API 地址，留空使用配置默认值。"),
                 IO.Combo.Input("server_strategy", options=["reuse", "oneshot", "manual"], default="reuse", tooltip="服务策略。"),
                 IO.Int.Input("startup_timeout", default=c.startup_timeout, min=30, max=1800, step=10, tooltip="服务启动超时秒数。"),
                 IO.String.Input("model_path", default=c.model_path, tooltip="主模型目录。"),
@@ -698,7 +710,7 @@ class FishSpeechStudioReferenceRename(IO.ComfyNode):
             inputs=[
                 IO.String.Input("fish_root", default=c.fish_root, tooltip="Fish-Speech 独立目录。"),
                 IO.String.Input("venv_python", default="", tooltip="隔离 Python，留空自动推断。"),
-                IO.String.Input("api_url", default="", tooltip="API 地址，留空自动分配。"),
+                IO.String.Input("api_url", default=c.api_url, tooltip="API 地址，留空使用配置默认值。"),
                 IO.Combo.Input("server_strategy", options=["reuse", "oneshot", "manual"], default="reuse", tooltip="服务策略。"),
                 IO.Int.Input("startup_timeout", default=c.startup_timeout, min=30, max=1800, step=10, tooltip="服务启动超时秒数。"),
                 IO.String.Input("model_path", default=c.model_path, tooltip="主模型目录。"),
@@ -868,7 +880,7 @@ class FishSpeechStudioNovelSynthesize(IO.ComfyNode):
                 IO.String.Input("library_json", default="", tooltip="角色库 JSON，用于把 speaker 映射到真实 reference_id。"),
                 IO.String.Input("fish_root", default=c.fish_root, tooltip="Fish-Speech 独立目录。"),
                 IO.String.Input("venv_python", default="", tooltip="隔离 Python，留空自动推断。"),
-                IO.String.Input("api_url", default="", tooltip="API 地址，留空自动分配。"),
+                IO.String.Input("api_url", default=c.api_url, tooltip="API 地址，留空使用配置默认值。"),
                 IO.Combo.Input("server_strategy", options=["reuse", "oneshot", "manual"], default="reuse", tooltip="服务策略。"),
                 IO.Int.Input("startup_timeout", default=c.startup_timeout, min=30, max=1800, step=10, tooltip="服务启动超时秒数。"),
                 IO.String.Input("model_path", default=c.model_path, tooltip="主模型目录。"),
