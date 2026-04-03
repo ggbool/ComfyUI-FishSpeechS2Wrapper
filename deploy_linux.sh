@@ -260,22 +260,36 @@ EOF
 
 # 如果指定了 ComfyUI 路径，尝试找到插件目录
 if [[ -n "$COMFYUI_ROOT" ]]; then
+    CUSTOM_NODES_DIR="$COMFYUI_ROOT/custom_nodes"
+
+    if [[ ! -d "$CUSTOM_NODES_DIR" ]]; then
+        log_error "ComfyUI custom_nodes 目录不存在: $CUSTOM_NODES_DIR"
+        log_error "请确认 --comfyui-root 指向正确的 ComfyUI 安装目录"
+        exit 1
+    fi
+
     # 支持两种目录名：git clone 默认名 和 手动重命名
     PLUGIN_DIR=""
     for candidate in "ComfyUI-FishSpeechS2Wrapper" "ComfyUI_FishSpeechStudio"; do
-        if [[ -d "$COMFYUI_ROOT/custom_nodes/$candidate" ]]; then
-            PLUGIN_DIR="$COMFYUI_ROOT/custom_nodes/$candidate"
+        if [[ -d "$CUSTOM_NODES_DIR/$candidate" ]]; then
+            PLUGIN_DIR="$CUSTOM_NODES_DIR/$candidate"
             break
         fi
     done
-    if [[ -n "$PLUGIN_DIR" ]]; then
-        generate_config "$PLUGIN_DIR"
+
+    # 插件不存在则自动 clone
+    if [[ -z "$PLUGIN_DIR" ]]; then
+        PLUGIN_DIR="$CUSTOM_NODES_DIR/ComfyUI-FishSpeechS2Wrapper"
+        log_info "插件未安装，自动 clone 到: $PLUGIN_DIR"
+        git clone https://github.com/ggbool/ComfyUI-FishSpeechS2Wrapper.git "$PLUGIN_DIR"
     else
-        log_warn "插件目录不存在，已检查:"
-        log_warn "  $COMFYUI_ROOT/custom_nodes/ComfyUI-FishSpeechS2Wrapper"
-        log_warn "  $COMFYUI_ROOT/custom_nodes/ComfyUI_FishSpeechStudio"
-        log_warn "请先安装插件: cd $COMFYUI_ROOT/custom_nodes && git clone https://github.com/ggbool/ComfyUI-FishSpeechS2Wrapper.git"
+        # 已存在则尝试更新
+        log_info "插件已存在: $PLUGIN_DIR，拉取更新..."
+        cd "$PLUGIN_DIR"
+        git pull origin main 2>/dev/null || log_warn "插件 git pull 失败，继续使用本地版本"
     fi
+
+    generate_config "$PLUGIN_DIR"
 else
     log_info "未指定 --comfyui-root，跳过 config.yaml 生成"
     log_info "稍后手动运行:"
