@@ -1,0 +1,36 @@
+# ============================================================
+# FishSpeechStudio 默认配置（随插件分发，请勿直接修改）
+# 如需自定义，请复制为 config.yaml 并修改。
+# ============================================================
+
+# Fish-Speech 安装根目录
+# Windows 示例: C:/tools/fish-speech
+# Linux   示例: /home/user/fish-speech
+# 留空则按平台自动检测（默认 ~/fish-speech）
+fish_root: ""
+
+# 虚拟环境 Python 可执行文件路径
+# 留空自动推断：
+#   Windows → {fish_root}/.venv/Scripts/python.exe
+#   Linux   → {fish_root}/.venv/bin/python
+venv_python: ""
+
+# Fish-Speech API 监听地址
+api_url: "http://127.0.0.1:8080"
+
+# 模型 checkpoint 目录
+# 留空则自动为 {fish_root}/checkpoints/s2-pro
+model_path: ""
+
+# Codec 权重文件
+# 留空则自动为 {fish_root}/checkpoints/s2-pro/codec.pth
+codec_path: ""
+
+# 半精度推理 (enable / disable)
+half_precision: "enable"
+
+# 最大序列长度
+max_seq_len: 3072
+
+# API 服务启动超时（秒）
+startup_timeout: 240

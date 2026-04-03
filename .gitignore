@@ -1,0 +1,9 @@
+# 用户本机配置（不入库）
+config.yaml
+
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,23 @@
+# ============================================================
+# FishSpeechStudio Linux 配置示例
+# 复制为 config.yaml 后按需修改
+# ============================================================
+
+# Fish-Speech 安装目录
+fish_root: "/home/user/fish-speech"
+
+# API 监听地址
+api_url: "http://127.0.0.1:8080"
+
+# 模型路径（留空自动基于 fish_root 推断）
+model_path: ""
+codec_path: ""
+
+# 半精度推理
+half_precision: "enable"
+
+# 最大序列长度
+max_seq_len: 3072
+
+# 服务启动超时（Linux 可能需要更长时间）
+startup_timeout: 300
